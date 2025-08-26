@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <title>Teste de Credenciais Google</title>
+
+  <!-- Config local (no .gitignore) -->
+  <script src="config.js"></script>
+
+  <!-- Google Identity -->
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+
+  <style>
+    body{font-family:system-ui,Arial;margin:24px}
+    pre{background:#f5f5f5;padding:12px;overflow:auto}
+    .warn{color:#b45309}.ok{color:#15803d}.err{color:#b91c1c}
+    button{padding:8px 12px;border:1px solid #ccc;background:#fff;cursor:pointer}
+  </style>
+</head>
+<body>
+  <h1>Teste de Credenciais</h1>
+
+  <h2>1) Google OAuth (Client ID)</h2>
+  <div id="statusAuth" class="warn">Aguardando carregamento…</div>
+  <div id="buttonDiv" style="margin:12px 0;"></div>
+  <pre id="loginResult"></pre>
+
+  <h2>2) YouTube Data API (API Key)</h2>
+  <button id="btnApi">Testar API Key</button>
+  <div id="statusApi" class="warn" style="margin-top:8px;">Aguardando…</div>
+  <pre id="apiResult"></pre>
+
+  <script>
+    // Utilitário
+    const el = (id) => document.getElementById(id);
+
+    // 1) Teste do Client ID (GIS)
+    function initAuth() {
+      try {
+        if (!window.CONFIG || !CONFIG.GOOGLE_CLIENT_ID) {
+          el("statusAuth").className = "err";
+          el("statusAuth").textContent = "❌ GOOGLE_CLIENT_ID não encontrado em config.js";
+          return;
+        }
+        if (!window.google || !google.accounts || !google.accounts.id) {
+          el("statusAuth").className = "warn";
+          el("statusAuth").textContent = "⏳ Script do Google ainda não carregou… aguarde 1–2s e recarregue.";
+          return;
+        }
+        google.accounts.id.initialize({
+          client_id: CONFIG.GOOGLE_CLIENT_ID,
+          callback: (response) => {
+            el("loginResult").textContent =
+              "✅ Login OK! Token (parcial): " + response.credential.slice(0, 40) + "...";
+            console.log("Token completo:", response.credential);
+          },
+        });
+        google.accounts.id.renderButton(el("buttonDiv"), { theme: "outline", size: "large" });
+        el("statusAuth").className = "ok";
+        el("statusAuth").textContent = "✅ Botão renderizado. Clique para login.";
+      } catch (e) {
+        el("statusAuth").className = "err";
+        el("statusAuth").textContent = "❌ Erro ao iniciar GIS: " + e;
+        console.error(e);
+      }
+    }
+
+    // 2) Teste da API Key (YouTube)
+    async function testApiKey() {
+      try {
+        if (!window.CONFIG || !CONFIG.API_KEY) {
+          el("statusApi").className = "err";
+          el("statusApi").textContent = "❌ API_KEY não encontrada em config.js";
+          return;
+        }
+        el("statusApi").className = "warn";
+        el("statusApi").textContent = "⏳ Chamando YouTube Data API…";
+        const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=teste&maxResults=2&key=${CONFIG.API_KEY}`;
+        const res = await fetch(url);
+        const data = await res.json();
+        el("apiResult").textContent = JSON.stringify(data, null, 2);
+        if (res.ok && !data.error) {
+          el("statusApi").className = "ok";
+          el("statusApi").textContent = "✅ API Key funcionando!";
+        } else {
+          el("statusApi").className = "err";
+          el("statusApi").textContent = "❌ Erro retornado pela API.";
+          console.error("YouTube API error:", data);
+        }
+      } catch (e) {
+        el("statusApi").className = "err";
+        el("statusApi").textContent = "❌ Falha na chamada à API: " + e;
+        console.error(e);
+      }
+    }
+
+    // Eventos
+    window.addEventListener("load", () => {
+      // GIS pode demorar 1–2s mesmo com async/defer; tenta inicializar,
+      // e re-tenta rapidamente se ainda não carregou.
+      const kickoff = () => {
+        if (window.google && google.accounts && google.accounts.id) initAuth();
+        else setTimeout(initAuth, 800);
+      };
+      kickoff();
+      el("btnApi").addEventListener("click", testApiKey);
+    });
+  </script>
+</body>
+</html>
