@@ -298,8 +298,6 @@
             <button onclick="toggleBeep()">Campainha: <span id="beepState">Ligada</span></button>
             <button onclick="saveAgenda()">Salvar pauta</button>
             <button onclick="loadAgenda()">Carregar pauta</button>
-            <button onclick="exportPdf()" style="background: #F44336;">📄 Exportar PDF</button>
-            <button onclick="exportXlsx()" style="background: #4CAF50;">📊 Exportar XLSX</button>
             <button id="gravarBtn" onclick="gravarRelatorios()" disabled style="background: #2196F3; opacity: 0.5;">📁 Gravar no Drive</button>
         </div>
 
@@ -1094,7 +1092,7 @@
 
             // Verificar se as credenciais do Google estão configuradas
             if (!checkGoogleApiConfig()) {
-                alert('Integração com Google Drive não configurada.\n\nPara usar esta funcionalidade, você precisa:\n1. Criar um projeto no Google Cloud Console\n2. Ativar a Google Drive API\n3. Configurar as credenciais no arquivo HTML\n\nPor enquanto, você pode usar os botões de exportação individual (PDF/XLSX) no menu.');
+                alert('Integração com Google Drive não configurada.\n\nPara usar esta funcionalidade, você precisa:\n1. Criar um projeto no Google Cloud Console\n2. Ativar a Google Drive API\n3. Configurar as credenciais no arquivo HTML');
                 return;
             }
 
