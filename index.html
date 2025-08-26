@@ -718,13 +718,40 @@
         }
 
         function exportCsv() {
-            var lines = [["#", "Etapa", "Planejado(min)", "Inicio", "Fim", "Realizado(seg)"]];
+            // Obter informações da reunião
+            var teamName = document.getElementById('teamName').value || 'Não informado';
+            var meetingDate = document.getElementById('meetingDate').value || 'Não informado';
+            var meetingNumber = document.getElementById('meetingNumber').value || 'Não informado';
+            var timekeeper = document.getElementById('timekeeper').value || 'Não informado';
+            var totalTime = generalTimeEl.textContent || '00:00:00';
+            
+            // Formatar data para exibição
+            var formattedDate = meetingDate !== 'Não informado' ? 
+                new Date(meetingDate + 'T00:00:00').toLocaleDateString('pt-BR') : 
+                'Não informado';
+            
+            // Criar linhas do CSV incluindo informações da reunião
+            var lines = [
+                ["BNI TimeKeeper - Relatório da Reunião"],
+                [""],
+                ["Equipe BNI:", teamName],
+                ["Data da Reunião:", formattedDate],
+                ["Número da Reunião:", meetingNumber],
+                ["TimeKeeper:", timekeeper],
+                ["Tempo Total da Reunião:", totalTime],
+                [""],
+                ["#", "Etapa", "Planejado(min)", "Inicio", "Fim", "Realizado(seg)"]
+            ];
+            
+            // Adicionar dados dos itens da agenda
             for (var i = 0; i < items.length; i++) {
                 var it = items[i];
                 var planned = (parseFloat(it.minutes) || 0);
                 var realizedSec = it.end && it.start ? Math.max(0, Math.round((it.end - it.start) / 1000)) : Math.round(it.elapsed || 0);
                 lines.push([i + 1, it.name, planned, it.start ? it.start.toLocaleTimeString() : "", it.end ? it.end.toLocaleTimeString() : "", realizedSec]);
             }
+            
+            // Gerar CSV
             var csv = lines.map(function(r) {
                 return r.map(function(v) {
                     return '"' + String(v).replace(/"/g, '""') + '"';
@@ -1114,22 +1141,58 @@
             }
         }
 
-        // Função para aguardar as APIs do Google estarem prontas
+        // Função para aguardar as APIs do Google estarem prontas com múltiplas estratégias
         function waitForGoogleApis() {
             return new Promise((resolve, reject) => {
-                const maxAttempts = 50; // 10 segundos máximo (50 * 200ms)
+                const maxAttempts = 150; // 30 segundos máximo (150 * 200ms)
                 let attempts = 0;
+                let fallbackAttempted = false;
                 
                 const checkApis = () => {
                     attempts++;
                     
+                    // Verificar se as APIs estão disponíveis globalmente
+                    const gapiAvailable = typeof window.gapi !== 'undefined' && window.gapi && window.gapi.client;
+                    const googleAvailable = typeof window.google !== 'undefined' && window.google && window.google.accounts;
+                    
+                    console.log(`Tentativa ${attempts}: GAPI=${gapiAvailable}, Google=${googleAvailable}, gapiInited=${gapiInited}, gisInited=${gisInited}`);
+                    
+                    // Se as APIs estão disponíveis mas não inicializadas, tentar inicializar
+                    if (gapiAvailable && !gapiInited) {
+                        console.log('Tentando inicializar GAPI...');
+                        try {
+                            gapiLoaded();
+                        } catch (e) {
+                            console.error('Erro ao inicializar GAPI:', e);
+                        }
+                    }
+                    
+                    if (googleAvailable && !gisInited) {
+                        console.log('Tentando inicializar GIS...');
+                        try {
+                            gisLoaded();
+                        } catch (e) {
+                            console.error('Erro ao inicializar GIS:', e);
+                        }
+                    }
+                    
                     if (gapiInited && gisInited) {
+                        console.log('APIs do Google carregadas com sucesso!');
                         resolve();
                         return;
                     }
                     
+                    // Tentar estratégia de fallback após 50 tentativas (10 segundos)
+                    if (attempts === 50 && !fallbackAttempted) {
+                        console.log('Tentando estratégia de fallback para carregar APIs...');
+                        fallbackAttempted = true;
+                        loadGoogleApisFallback();
+                    }
+                    
                     if (attempts >= maxAttempts) {
-                        reject(new Error('Timeout: APIs do Google não carregaram a tempo'));
+                        console.error('Todas as estratégias de carregamento falharam. Oferecendo alternativa offline.');
+                        // Em vez de rejeitar, oferecer alternativa offline
+                        offerOfflineAlternative();
                         return;
                     }
                     
@@ -1138,6 +1201,150 @@
                 
                 checkApis();
             });
+        }
+
+        // Estratégia de fallback para carregar APIs do Google
+        function loadGoogleApisFallback() {
+            console.log('Executando estratégia de fallback...');
+            
+            // Remover scripts existentes que podem estar corrompidos
+            const existingGapiScript = document.querySelector('script[src*="apis.google.com"]');
+            const existingGisScript = document.querySelector('script[src*="accounts.google.com"]');
+            
+            if (existingGapiScript) {
+                existingGapiScript.remove();
+                console.log('Script GAPI existente removido');
+            }
+            
+            if (existingGisScript) {
+                existingGisScript.remove();
+                console.log('Script GIS existente removido');
+            }
+            
+            // Tentar carregar com URLs alternativas e timeout
+            setTimeout(() => {
+                loadScriptWithTimeout('https://apis.google.com/js/api.js', 10000)
+                    .then(() => {
+                        console.log('GAPI carregado via fallback');
+                        if (typeof window.gapi !== 'undefined') {
+                            gapiLoaded();
+                        }
+                    })
+                    .catch(e => console.error('Fallback GAPI falhou:', e));
+                
+                loadScriptWithTimeout('https://accounts.google.com/gsi/client', 10000)
+                    .then(() => {
+                        console.log('GIS carregado via fallback');
+                        if (typeof window.google !== 'undefined') {
+                            gisLoaded();
+                        }
+                    })
+                    .catch(e => console.error('Fallback GIS falhou:', e));
+            }, 1000);
+        }
+
+        // Função para carregar script com timeout
+        function loadScriptWithTimeout(src, timeout = 10000) {
+            return new Promise((resolve, reject) => {
+                const script = document.createElement('script');
+                script.src = src;
+                script.async = true;
+                script.defer = true;
+                
+                const timeoutId = setTimeout(() => {
+                    script.remove();
+                    reject(new Error(`Timeout ao carregar ${src}`));
+                }, timeout);
+                
+                script.onload = () => {
+                    clearTimeout(timeoutId);
+                    resolve();
+                };
+                
+                script.onerror = () => {
+                    clearTimeout(timeoutId);
+                    script.remove();
+                    reject(new Error(`Erro ao carregar ${src}`));
+                };
+                
+                document.head.appendChild(script);
+            });
+        }
+
+        // Oferecer alternativa offline quando APIs não carregam
+        function offerOfflineAlternative() {
+            const gravarBtn = document.getElementById('gravarBtn');
+            gravarBtn.textContent = '💾 Download Local';
+            gravarBtn.disabled = false;
+            gravarBtn.style.background = '#FF9800';
+            gravarBtn.style.opacity = '1';
+            
+            // Substituir a função de gravar para download local
+            gravarBtn.onclick = function() {
+                if (!meetingFinalized) {
+                    alert('A reunião precisa ser finalizada antes de gerar os relatórios.');
+                    return;
+                }
+                
+                // Verificar informações básicas
+                var teamName = document.getElementById('teamName').value;
+                var meetingDate = document.getElementById('meetingDate').value;
+                var meetingNumber = document.getElementById('meetingNumber').value;
+                var timekeeper = document.getElementById('timekeeper').value;
+
+                if (!teamName || !meetingDate || !meetingNumber || !timekeeper) {
+                    alert('Por favor, preencha todas as informações da reunião antes de gerar os relatórios:\n- Equipe BNI\n- Data da Reunião\n- Número da Reunião\n- TimeKeeper');
+                    return;
+                }
+                
+                gravarBtn.textContent = '⏳ Gerando arquivos...';
+                gravarBtn.disabled = true;
+                
+                try {
+                    // Gerar nome do arquivo
+                    var fileName = 'BNI_' + teamName.replace(/[^a-zA-Z0-9]/g, '_') + '_Reuniao_' + meetingNumber + '_' + meetingDate;
+                    
+                    // Gerar PDF
+                    exportPdf();
+                    
+                    // Aguardar um pouco e gerar XLSX
+                    setTimeout(() => {
+                        exportXlsx();
+                        
+                        // Gerar CSV como backup
+                        setTimeout(() => {
+                            exportCsv();
+                            
+                            gravarBtn.textContent = '✅ Arquivos Baixados';
+                            gravarBtn.style.background = '#2E7D32';
+                            
+                            alert('Relatórios gerados com sucesso!\n\n' +
+                                  '📄 PDF: ' + fileName + '.pdf\n' +
+                                  '📊 XLSX: ' + fileName + '.xlsx\n' +
+                                  '📋 CSV: relatorio_timekeeper_' + new Date().toISOString().slice(0, 10) + '.csv\n\n' +
+                                  'Os arquivos foram baixados para sua pasta de Downloads.\n' +
+                                  'Você pode enviá-los manualmente para o Google Drive.');
+                        }, 1000);
+                    }, 1000);
+                    
+                } catch (error) {
+                    console.error('Erro ao gerar arquivos:', error);
+                    alert('Erro ao gerar arquivos: ' + error.message);
+                    gravarBtn.textContent = '💾 Download Local';
+                    gravarBtn.disabled = false;
+                }
+            };
+            
+            console.log('Modo offline ativado - usuário pode baixar arquivos localmente');
+            
+            // Mostrar notificação sobre o modo offline
+            setTimeout(() => {
+                alert('⚠️ Conexão com Google Drive indisponível\n\n' +
+                      'O sistema mudou para modo offline.\n' +
+                      'Você pode gerar e baixar os relatórios localmente.\n\n' +
+                      'Os arquivos serão salvos na sua pasta de Downloads\n' +
+                      'e você pode enviá-los manualmente para o Google Drive.');
+            }, 500);
         }
 
         async function uploadFilesToDrive() {

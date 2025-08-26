@@ -698,13 +698,40 @@
         }
 
         function exportCsv() {
-            var lines = [["#", "Etapa", "Planejado(min)", "Inicio", "Fim", "Realizado(seg)"]];
+            // Obter informações da reunião
+            var teamName = document.getElementById('teamName').value || 'Não informado';
+            var meetingDate = document.getElementById('meetingDate').value || 'Não informado';
+            var meetingNumber = document.getElementById('meetingNumber').value || 'Não informado';
+            var timekeeper = document.getElementById('timekeeper').value || 'Não informado';
+            var totalTime = generalTimeEl.textContent || '00:00:00';
+            
+            // Formatar data para exibição
+            var formattedDate = meetingDate !== 'Não informado' ? 
+                new Date(meetingDate + 'T00:00:00').toLocaleDateString('pt-BR') : 
+                'Não informado';
+            
+            // Criar linhas do CSV incluindo informações da reunião
+            var lines = [
+                ["BNI TimeKeeper - Relatório da Reunião"],
+                [""],
+                ["Equipe BNI:", teamName],
+                ["Data da Reunião:", formattedDate],
+                ["Número da Reunião:", meetingNumber],
+                ["TimeKeeper:", timekeeper],
+                ["Tempo Total da Reunião:", totalTime],
+                [""],
+                ["#", "Etapa", "Planejado(min)", "Inicio", "Fim", "Realizado(seg)"]
+            ];
+            
+            // Adicionar dados dos itens da agenda
             for (var i = 0; i < items.length; i++) {
                 var it = items[i];
                 var planned = (parseFloat(it.minutes) || 0);
                 var realizedSec = it.end && it.start ? Math.max(0, Math.round((it.end - it.start) / 1000)) : Math.round(it.elapsed || 0);
                 lines.push([i + 1, it.name, planned, it.start ? it.start.toLocaleTimeString() : "", it.end ? it.end.toLocaleTimeString() : "", realizedSec]);
             }
+            
+            // Gerar CSV
             var csv = lines.map(function(r) {
                 return r.map(function(v) {
                     return '"' + String(v).replace(/"/g, '""') + '"';
