@@ -2,11 +2,11 @@
 // Este arquivo pode ser commitado no Git pois não contém credenciais sensíveis
 
 const GOOGLE_CONFIG = {
-    CLIENT_ID: 'SEU_CLIENT_ID_AQUI.apps.googleusercontent.com',
-    API_KEY: 'SUA_API_KEY_AQUI',
+    CLIENT_ID: '805277583561-snfjdddod2gtcofqfemrbrisphf19h26.apps.googleusercontent.com',
+    API_KEY: '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',
     DISCOVERY_DOC: 'https://www.googleapis.com/discovery/v1/apis/drive/v3/rest',
     SCOPES: 'https://www.googleapis.com/auth/drive.file',
-    FOLDER_ID: 'SEU_FOLDER_ID_AQUI' // ID da pasta do Google Drive
+    FOLDER_ID: '15GYzG5M1PcLNutNqjNbUoLTcpEpuOEig' // ID da pasta do Google Drive
 };
 
 // Para configurar:
