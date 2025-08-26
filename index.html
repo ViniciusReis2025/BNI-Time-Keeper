@@ -8,7 +8,6 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    <script src="config-public.js"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -374,25 +373,8 @@
         var generalElapsed = 0;
         var meetingFinalized = false;
 
-        // Google Drive API configuration
-        var GOOGLE_CLIENT_ID = GOOGLE_CONFIG.CLIENT_ID;
-        var GOOGLE_API_KEY = GOOGLE_CONFIG.API_KEY;
-        var DISCOVERY_DOC = GOOGLE_CONFIG.DISCOVERY_DOC;
-        var SCOPES = GOOGLE_CONFIG.SCOPES;
-        var FOLDER_ID = GOOGLE_CONFIG.FOLDER_ID;
-        
-        var gapi;
-        var tokenClient;
-        var gapiInited = false;
-        var gisInited = false;
-        var googleApiConfigured = false;
-
-        // Verificar se as credenciais estão configuradas
-        function checkGoogleApiConfig() {
-            googleApiConfigured = GOOGLE_CLIENT_ID !== 'SEU_CLIENT_ID_AQUI.apps.googleusercontent.com' && 
-                                 GOOGLE_API_KEY !== 'SUA_API_KEY_AQUI';
-            return googleApiConfigured;
-        }
+        // Webhook configuration
+        var WEBHOOK_URL = 'https://n8n.fortress.tec.br/webhook-test/Arquivo_TimeKeeper';
 
         var DEFAULT_ITEMS = [
             "Open Networking",
@@ -1115,27 +1097,31 @@
                 return;
             }
 
-            // Verificar se as credenciais do Google estão configuradas
-            if (!checkGoogleApiConfig()) {
-                alert('Integração com Google Drive não configurada.\n\nPara usar esta funcionalidade, você precisa:\n1. Criar um projeto no Google Cloud Console\n2. Ativar a Google Drive API\n3. Configurar as credenciais no arquivo HTML');
-                return;
-            }
-
             var gravarBtn = document.getElementById('gravarBtn');
-            gravarBtn.textContent = '⏳ Carregando APIs...';
+            gravarBtn.textContent = '⏳ Enviando arquivos...';
             gravarBtn.disabled = true;
 
             try {
-                // Aguardar as APIs do Google estarem prontas
-                await waitForGoogleApis();
+                // Gerar nome do arquivo baseado nas informações da reunião
+                var fileName = 'BNI_' + teamName.replace(/[^a-zA-Z0-9]/g, '_') + '_Reuniao_' + meetingNumber + '_' + meetingDate;
                 
-                gravarBtn.textContent = '🔐 Autenticando...';
+                // Gerar PDF como blob
+                var pdfBlob = await generatePdfBlob(fileName);
                 
-                // Iniciar processo de autenticação
-                handleAuthClick();
+                // Gerar XLSX como blob
+                var xlsxBlob = await generateXlsxBlob(fileName);
+                
+                // Enviar arquivos para o webhook
+                await sendFilesToWebhook(pdfBlob, xlsxBlob, fileName);
+                
+                gravarBtn.textContent = '✅ Enviado com sucesso';
+                gravarBtn.style.background = '#2E7D32';
+                
+                alert('Relatórios enviados com sucesso!\n\nPDF: ' + fileName + '.pdf\nXLSX: ' + fileName + '.xlsx\n\nOs arquivos foram processados e enviados para o sistema.');
+                
             } catch (error) {
-                console.error('Erro ao carregar APIs do Google:', error);
-                alert('Erro ao carregar APIs do Google. Verifique sua conexão e tente novamente.');
+                console.error('Erro ao enviar arquivos:', error);
+                alert('Erro ao enviar arquivos: ' + error.message);
                 gravarBtn.textContent = '📁 Gravar no Drive';
                 gravarBtn.disabled = false;
             }
@@ -1601,6 +1587,50 @@
             });
         }
 
+        async function sendFilesToWebhook(pdfBlob, xlsxBlob, fileName) {
+            // Criar FormData para enviar os arquivos
+            const formData = new FormData();
+            
+            // Adicionar informações da reunião
+            formData.append('teamName', document.getElementById('teamName').value);
+            formData.append('meetingDate', document.getElementById('meetingDate').value);
+            formData.append('meetingNumber', document.getElementById('meetingNumber').value);
+            formData.append('timekeeper', document.getElementById('timekeeper').value);
+            formData.append('totalTime', generalTimeEl.textContent || '00:00:00');
+            
+            // Adicionar os arquivos
+            formData.append('pdfFile', pdfBlob, fileName + '.pdf');
+            formData.append('xlsxFile', xlsxBlob, fileName + '.xlsx');
+            
+            // Adicionar dados da reunião em JSON
+            const meetingData = {
+                items: items.map(function(item, index) {
+                    var realizedSec = item.end && item.start ? Math.max(0, Math.round((item.end - item.start) / 1000)) : Math.round(item.elapsed || 0);
+                    return {
+                        number: index + 1,
+                        name: item.name,
+                        plannedMinutes: parseFloat(item.minutes) || 0,
+                        startTime: item.start ? item.start.toISOString() : null,
+                        endTime: item.end ? item.end.toISOString() : null,
+                        realizedSeconds: realizedSec
+                    };
+                })
+            };
+            formData.append('meetingData', JSON.stringify(meetingData));
+            
+            // Enviar para o webhook
+            const response = await fetch(WEBHOOK_URL, {
+                method: 'POST',
+                body: formData
+            });
+            
+            if (!response.ok) {
+                throw new Error('Erro ao enviar arquivos para o webhook: ' + response.status + ' ' + response.statusText);
+            }
+            
+            return response;
+        }
+
         function generatePdfForDrive(fileName) {
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF('p', 'mm', 'a4');
@@ -1821,8 +1851,5 @@
         });
     </script>
     
-    <!-- Callbacks para inicialização das APIs -->
-    <script async defer src="https://apis.google.com/js/api.js" onload="gapiLoaded()"></script>
-    <script async defer src="https://accounts.google.com/gsi/client" onload="gisLoaded()"></script>
 </body>
 </html>
