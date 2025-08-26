@@ -1,0 +1,1027 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>BNI TimeKeeper — Timer</title>
+    <!-- Bibliotecas para exportação -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #C41E3A 0%, #615200c2 100%);
+            color: white;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            min-height: 100vh;
+        }
+        .header {
+            background: rgba(0,0,0,0.3);
+            border-radius: 15px;
+            padding: 20px;
+            backdrop-filter: blur(10px);
+        }
+        .meeting-info {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .info-field {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        .info-field label {
+            font-weight: bold;
+            font-size: 14px;
+            color: #FFD700;
+        }
+        .info-field input {
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,215,0,0.5);
+            color: white;
+            padding: 8px;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        .info-field input::placeholder {
+            color: rgba(255,255,255,0.6);
+        }
+        .general-timer {
+            text-align: center;
+            background: rgba(0,0,0,0.3);
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        .general-timer h3 {
+            margin: 0 0 10px 0;
+            color: #FFD700;
+            font-size: 18px;
+        }
+        .general-time {
+            font-size: 36px;
+            font-weight: bold;
+            color: white;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+        .main-content {
+            display: flex;
+            gap: 20px;
+            flex: 1;
+        }
+        .left {
+            flex: 2;
+            background: rgba(255,255,255,0.1);
+            border-radius: 15px;
+            padding: 20px;
+            backdrop-filter: blur(10px);
+        }
+        .right {
+            flex: 1;
+            background: rgba(255,255,255,0.1);
+            border-radius: 15px;
+            padding: 20px;
+            backdrop-filter: blur(10px);
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        h1 {
+            margin: 0 0 20px 0;
+            font-size: 24px;
+            text-align: center;
+        }
+        .timer {
+            text-align: center;
+            margin: 30px 0;
+            padding: 30px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 15px;
+        }
+        .time {
+            font-size: 72px;
+            font-weight: bold;
+            margin: 20px 0;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+        .phase {
+            font-size: 18px;
+            margin: 10px 0;
+            opacity: 0.9;
+        }
+        .progress {
+            width: 100%;
+            height: 20px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 20px 0;
+        }
+        .bar {
+            height: 100%;
+            width: 0%;
+            background: #4CAF50;
+            transition: width 0.3s ease;
+        }
+        .bar.yellow { background: #FFC107; }
+        .bar.red { background: #F44336; }
+        button {
+            background: rgba(255,255,255,0.2);
+            color: white;
+            border: 1px solid rgba(255,255,255,0.3);
+            padding: 10px 15px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin: 5px;
+            font-size: 14px;
+        }
+        button:hover {
+            background: rgba(255,255,255,0.3);
+        }
+        button.primary {
+            background: #2196F3;
+            border-color: #1976D2;
+        }
+        button.success {
+            background: #4CAF50;
+            border-color: #388E3C;
+        }
+        button.danger {
+            background: #F44336;
+            border-color: #D32F2F;
+        }
+        .controls {
+            text-align: center;
+            margin: 20px 0;
+        }
+        .agenda {
+            margin: 20px 0;
+        }
+        .agenda-item {
+            background: rgba(255,255,255,0.1);
+            margin: 10px 0;
+            padding: 15px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .agenda-item.current {
+            background: rgba(33, 150, 243, 0.3);
+            border: 2px solid #2196F3;
+        }
+        .agenda-item input[type="text"] {
+            flex: 1;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.3);
+            color: white;
+            padding: 8px;
+            border-radius: 5px;
+        }
+        .agenda-item input[type="number"] {
+            width: 80px;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.3);
+            color: white;
+            padding: 8px;
+            border-radius: 5px;
+        }
+        .badge {
+            background: rgba(255,255,255,0.2);
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 12px;
+            min-width: 25px;
+            text-align: center;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        th, td {
+            padding: 8px;
+            text-align: left;
+            border-bottom: 1px solid rgba(255,255,255,0.2);
+            font-size: 12px;
+        }
+        th {
+            background: rgba(255,255,255,0.1);
+            font-weight: bold;
+        }
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            font-size: 20vh;
+            font-weight: bold;
+            color: white;
+            z-index: 1000;
+        }
+        .overlay.show { display: flex; }
+        .overlay.green { background: #4CAF50; }
+        .overlay.yellow { background: #FFC107; }
+        .overlay.red { background: #F44336; }
+        .legend {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin: 15px 0;
+            font-size: 14px;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+        .help {
+            text-align: center;
+            font-size: 12px;
+            opacity: 0.8;
+            margin: 15px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1 style="text-align: center; margin: 0 0 20px 0; color: #FFD700; font-size: 28px;">BNI TimeKeeper</h1>
+        
+        <div class="meeting-info">
+            <div class="info-field">
+                <label>Equipe BNI:</label>
+                <input type="text" id="teamName" placeholder="Nome da equipe BNI">
+            </div>
+            <div class="info-field">
+                <label>Data da Reunião:</label>
+                <input type="date" id="meetingDate">
+            </div>
+            <div class="info-field">
+                <label>Número da Reunião:</label>
+                <input type="number" id="meetingNumber" placeholder="Ex: 123">
+            </div>
+            <div class="info-field">
+                <label>TimeKeeper:</label>
+                <input type="text" id="timekeeper" placeholder="Nome do TimeKeeper">
+            </div>
+        </div>
+        
+        <div class="general-timer">
+            <h3>Tempo Total da Reunião</h3>
+            <div class="general-time" id="generalTime">00:00:00</div>
+        </div>
+    </div>
+
+    <div class="main-content">
+        <div class="left">
+            <h1>Console de Controle</h1>
+        
+        <div class="controls">
+            <button onclick="toggleBeep()">Campainha: <span id="beepState">Ligada</span></button>
+            <button onclick="saveAgenda()">Salvar pauta</button>
+            <button onclick="loadAgenda()">Carregar pauta</button>
+            <button onclick="exportCsv()">Exportar CSV</button>
+            <button onclick="exportPdf()" style="background: #D32F2F;">Exportar PDF</button>
+            <button onclick="exportXlsx()" style="background: #388E3C;">Exportar XLSX</button>
+        </div>
+
+        <div class="timer">
+            <div class="phase" id="phase">Selecione um item e aperte Espaço para iniciar</div>
+            <div class="time" id="time">00:00</div>
+            <div class="progress">
+                <div class="bar" id="bar"></div>
+            </div>
+            <div class="legend">
+                <div class="legend-item">
+                    <div class="dot" style="background: #4CAF50;"></div>
+                    <span>OK</span>
+                </div>
+                <div class="legend-item">
+                    <div class="dot" style="background: #FFC107;"></div>
+                    <span>Atenção</span>
+                </div>
+                <div class="legend-item">
+                    <div class="dot" style="background: #F44336;"></div>
+                    <span>Tempo Esgotado</span>
+                </div>
+            </div>
+        <div class="controls">
+            <button id="startPause" onclick="startPause()">Iniciar</button>
+            <button onclick="next()">Próximo</button>
+            <button onclick="reset()">Zerar</button>
+            <button onclick="finalizarReuniao()" style="background: #8B0000; color: white;">Finalizar Reunião</button>
+        </div>
+            <div class="help">
+                Atalhos: Espaço (iniciar/pausar) • N (próximo) • R (zerar) • F (tela cheia)
+            </div>
+        </div>
+
+        <div class="agenda" id="agenda"></div>
+
+        <div class="help">
+            Dica: Clique no nome para editar • Duração em minutos por item • Use "Salvar pauta" para gravar no navegador
+        </div>
+    </div>
+
+    <div class="right">
+        <h1>Relatório</h1>
+        <p style="text-align: center; font-size: 14px; opacity: 0.8;">Planejado × Realizado por item</p>
+        
+        <table id="logTable">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Etapa</th>
+                    <th>Planejado</th>
+                    <th>Início</th>
+                    <th>Fim</th>
+                    <th>Realizado</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+    </div>
+
+    <div class="overlay" id="overlay" onclick="hidePlate()"></div>
+
+    <script>
+        var agendaEl = document.getElementById('agenda');
+        var timeEl = document.getElementById('time');
+        var phaseEl = document.getElementById('phase');
+        var barEl = document.getElementById('bar');
+        var logTbody = document.querySelector('#logTable tbody');
+        var overlay = document.getElementById('overlay');
+        var beepState = document.getElementById('beepState');
+        var generalTimeEl = document.getElementById('generalTime');
+
+        // General meeting timer variables
+        var meetingStartTime = null;
+        var generalElapsed = 0;
+
+        var DEFAULT_ITEMS = [
+            "Open Networking",
+            "Boas-vindas, avisos legais, check-in nas redes e apresentação de diretoria/liderança",
+            "Propósito e visão geral, números, benefícios e valores do BNI",
+            "Networkers Notáveis",
+            "Momento de Educação",
+            "Apresentações Semanais dos Membros (com Cliente-Sonho) + Votação",
+            "Apresentação de Novos Membros/Renovantes + Código de Ética",
+            "Reforço Cliente-Sonho e Pedidos de Referência",
+            "Relatório Comitê de Afiliação",
+            "Apresentação Principal 1",
+            "Apresentação Principal 2",
+            "Verificação da Qualidade das Referências",
+            "Momento de Contribuições dos Membros",
+            "Apresentação dos Convidados",
+            "Relatório do Vice-Presidente",
+            "Secretário/Tesoureiro: Palestrantes próximas 6 semanas",
+            "Anúncios, Lembretes e Relatórios Especiais",
+            "Secretário/Tesoureiro: Renovantes 30/60/90 e valores de equipe BNI",
+            "Sorteio do Prêmio do Palestrante",
+            "Mensagem final e fechamento",
+            "Agradecimento e encaminhamento de Convidados"
+        ];
+
+        var items = [];
+        var currentIndex = 0;
+        var running = false;
+        var lastTick = null;
+        var useBeep = true;
+
+        for (var i = 0; i < DEFAULT_ITEMS.length; i++) {
+            items.push({
+                name: DEFAULT_ITEMS[i],
+                minutes: '',
+                start: null,
+                end: null,
+                elapsed: 0
+            });
+        }
+
+        function fmt(s) {
+            s = Math.max(0, Math.floor(s));
+            var m = Math.floor(s / 60);
+            var sec = s % 60;
+            return (m < 10 ? '0' : '') + m + ':' + (sec < 10 ? '0' : '') + sec;
+        }
+
+        function fmtHMS(s) {
+            s = Math.max(0, Math.floor(s));
+            var h = Math.floor(s / 3600);
+            var m = Math.floor((s % 3600) / 60);
+            var sec = s % 60;
+            return (h < 10 ? '0' : '') + h + ':' + (m < 10 ? '0' : '') + m + ':' + (sec < 10 ? '0' : '') + sec;
+        }
+
+        function updateGeneralTimer() {
+            if (meetingStartTime) {
+                generalElapsed = Math.floor((Date.now() - meetingStartTime) / 1000);
+                generalTimeEl.textContent = fmtHMS(generalElapsed);
+            }
+        }
+
+        function playBeep(type) {
+            if (!useBeep) return;
+            try {
+                var ctx = new (window.AudioContext || window.webkitAudioContext)();
+                var o = ctx.createOscillator();
+                var g = ctx.createGain();
+                o.connect(g);
+                g.connect(ctx.destination);
+                o.type = 'sine';
+                o.frequency.value = (type === 'warn') ? 1000 : (type === 'near') ? 1400 : 800;
+                var dur = (type === 'end') ? 0.45 : 0.18;
+                g.gain.setValueAtTime(0.0001, ctx.currentTime);
+                g.gain.exponentialRampToValueAtTime(0.2, ctx.currentTime + 0.03);
+                g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + dur);
+                o.start();
+                o.stop(ctx.currentTime + dur + 0.02);
+            } catch(e) {}
+        }
+
+        function renderAgenda() {
+            agendaEl.innerHTML = "";
+            for (var idx = 0; idx < items.length; idx++) {
+                var it = items[idx];
+                var div = document.createElement('div');
+                div.className = 'agenda-item';
+                if (idx === currentIndex) div.className += ' current';
+
+                var badge = document.createElement('span');
+                badge.className = 'badge';
+                badge.textContent = idx + 1;
+
+                var nameInput = document.createElement('input');
+                nameInput.type = 'text';
+                nameInput.value = it.name;
+                nameInput.onchange = (function(index) {
+                    return function() {
+                        items[index].name = this.value;
+                        renderLog();
+                    };
+                })(idx);
+
+                var minutesInput = document.createElement('input');
+                minutesInput.type = 'number';
+                minutesInput.placeholder = 'min';
+                minutesInput.min = '0';
+                minutesInput.value = it.minutes;
+                minutesInput.onchange = (function(index) {
+                    return function() {
+                        items[index].minutes = this.value;
+                    };
+                })(idx);
+
+                var selBtn = document.createElement('button');
+                selBtn.textContent = 'Selecionar';
+                selBtn.onclick = (function(index) {
+                    return function() { selectIndex(index); };
+                })(idx);
+
+                var upBtn = document.createElement('button');
+                upBtn.textContent = '↑';
+                upBtn.onclick = (function(index) {
+                    return function() { move(index, -1); };
+                })(idx);
+
+                var downBtn = document.createElement('button');
+                downBtn.textContent = '↓';
+                downBtn.onclick = (function(index) {
+                    return function() { move(index, 1); };
+                })(idx);
+
+                var delBtn = document.createElement('button');
+                delBtn.textContent = 'Excluir';
+                delBtn.onclick = (function(index) {
+                    return function() { remove(index); };
+                })(idx);
+
+                div.appendChild(badge);
+                div.appendChild(nameInput);
+                div.appendChild(minutesInput);
+                div.appendChild(selBtn);
+                div.appendChild(upBtn);
+                div.appendChild(downBtn);
+                div.appendChild(delBtn);
+
+                agendaEl.appendChild(div);
+            }
+        }
+
+        function move(i, d) {
+            var j = i + d;
+            if (j < 0 || j >= items.length) return;
+            var t = items[i];
+            items[i] = items[j];
+            items[j] = t;
+            if (currentIndex === i) currentIndex = j;
+            else if (currentIndex === j) currentIndex = i;
+            renderAgenda();
+            renderLog();
+        }
+
+        function remove(i) {
+            items.splice(i, 1);
+            if (currentIndex >= items.length) currentIndex = items.length - 1;
+            renderAgenda();
+            renderLog();
+        }
+
+        function selectIndex(i) {
+            if (i === currentIndex) return;
+            
+            // Stop current timer and save elapsed time
+            var currentItem = items[currentIndex];
+            if (currentItem && running) {
+                if (!currentItem.start) currentItem.start = new Date();
+                currentItem.elapsed = currentItem.elapsed || 0;
+            }
+            
+            running = false;
+            currentIndex = i;
+            lastTick = null;
+            document.getElementById('startPause').textContent = 'Iniciar';
+            phaseEl.textContent = 'Selecionado: ' + items[i].name;
+            renderAgenda();
+            tick();
+        }
+
+        function tick() {
+            var it = items[currentIndex];
+            if (!it) {
+                timeEl.textContent = "00:00";
+                barEl.style.width = '0%';
+                return;
+            }
+
+            var total = (parseFloat(it.minutes) || 0) * 60;
+            if (running && total > 0) {
+                var t = Date.now();
+                if (lastTick != null) {
+                    it.elapsed += (t - lastTick) / 1000.0;
+                }
+                lastTick = t;
+            } else {
+                lastTick = Date.now();
+            }
+
+            var remaining = Math.max(0, Math.round(total - (it.elapsed || 0)));
+            timeEl.textContent = fmt(remaining);
+            phaseEl.textContent = items[currentIndex].name;
+
+            var ratio = total > 0 ? (it.elapsed || 0) / total : 0;
+            ratio = Math.min(1.2, ratio);
+            barEl.style.width = (Math.min(1, ratio) * 100) + '%';
+            barEl.className = 'bar';
+            if (ratio >= 1) {
+                barEl.className += ' red';
+            } else if (ratio >= 0.8) {
+                barEl.className += ' yellow';
+            }
+
+            if (total > 0 && running) {
+                var elapsed = it.elapsed || 0;
+                var at80 = Math.abs(elapsed - total * 0.8) < 0.04;
+                var at100 = Math.abs(elapsed - total) < 0.04;
+                if (at80) playBeep('near');
+                if (at100) playBeep('end');
+            }
+
+            // Update general timer
+            updateGeneralTimer();
+            
+            setTimeout(tick, 100);
+        }
+
+        function startPause() {
+            var it = items[currentIndex];
+            if (!it) return;
+            if (!it.minutes) {
+                var m = prompt('Defina a duração (minutos) para este item:', '1');
+                if (m === null) return;
+                it.minutes = parseInt(m, 10) || 0;
+                renderAgenda();
+            }
+            if (!it.start) it.start = new Date();
+            
+            // Start general meeting timer on first start
+            if (!meetingStartTime && !running) {
+                meetingStartTime = Date.now();
+            }
+            
+            running = !running;
+            document.getElementById('startPause').textContent = running ? 'Pausar' : 'Retomar';
+        }
+
+        function next() {
+            var it = items[currentIndex];
+            if (it) {
+                if (!it.start) it.start = new Date();
+                it.end = new Date();
+                renderLog();
+            }
+            
+            // Se for o último item, funciona como "Finalizar Reunião"
+            if (currentIndex >= items.length - 1) {
+                finalizarReuniao();
+                return;
+            }
+            
+            currentIndex++;
+            // Automatically start the next item
+            var nextItem = items[currentIndex];
+            if (nextItem) {
+                nextItem.start = new Date();
+                nextItem.elapsed = 0;
+                running = true;
+                document.getElementById('startPause').textContent = 'Pausar';
+            }
+            lastTick = null;
+            renderAgenda();
+        }
+
+        function resetCurrent() {
+            var it = items[currentIndex];
+            if (!it) return;
+            it.elapsed = 0;
+            it.start = null;
+            it.end = null;
+            running = false;
+            document.getElementById('startPause').textContent = 'Iniciar';
+        }
+
+        function renderLog() {
+            logTbody.innerHTML = "";
+            for (var i = 0; i < items.length; i++) {
+                var it = items[i];
+                var tr = document.createElement('tr');
+                var realizedSec = it.end && it.start ? Math.max(0, Math.round((it.end - it.start) / 1000)) : (it.elapsed || 0);
+
+                var cell1 = document.createElement('td');
+                cell1.textContent = i + 1;
+                var cell2 = document.createElement('td');
+                cell2.textContent = it.name;
+                var cell3 = document.createElement('td');
+                cell3.textContent = it.minutes ? (it.minutes + 'm') : '-';
+                var cell4 = document.createElement('td');
+                cell4.textContent = it.start ? it.start.toLocaleTimeString() : '-';
+                var cell5 = document.createElement('td');
+                cell5.textContent = it.end ? it.end.toLocaleTimeString() : '-';
+                var cell6 = document.createElement('td');
+                cell6.textContent = realizedSec ? fmt(realizedSec) : '-';
+
+                tr.appendChild(cell1);
+                tr.appendChild(cell2);
+                tr.appendChild(cell3);
+                tr.appendChild(cell4);
+                tr.appendChild(cell5);
+                tr.appendChild(cell6);
+
+                logTbody.appendChild(tr);
+            }
+        }
+
+        function exportCsv() {
+            var lines = [["#", "Etapa", "Planejado(min)", "Inicio", "Fim", "Realizado(seg)"]];
+            for (var i = 0; i < items.length; i++) {
+                var it = items[i];
+                var planned = (parseFloat(it.minutes) || 0);
+                var realizedSec = it.end && it.start ? Math.max(0, Math.round((it.end - it.start) / 1000)) : Math.round(it.elapsed || 0);
+                lines.push([i + 1, it.name, planned, it.start ? it.start.toLocaleTimeString() : "", it.end ? it.end.toLocaleTimeString() : "", realizedSec]);
+            }
+            var csv = lines.map(function(r) {
+                return r.map(function(v) {
+                    return '"' + String(v).replace(/"/g, '""') + '"';
+                }).join(",");
+            }).join("\n");
+
+            var blob = new Blob([csv], {type: "text/csv;charset=utf-8;"});
+            var url = URL.createObjectURL(blob);
+            var a = document.createElement('a');
+            a.href = url;
+            a.download = 'relatorio_timekeeper_' + new Date().toISOString().slice(0, 10) + '.csv';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function exportPdf() {
+            try {
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF('p', 'mm', 'a4');
+                
+                // Informações da reunião
+                var teamName = document.getElementById('teamName').value || 'Não informado';
+                var meetingDate = document.getElementById('meetingDate').value || 'Não informado';
+                var meetingNumber = document.getElementById('meetingNumber').value || 'Não informado';
+                var timekeeper = document.getElementById('timekeeper').value || 'Não informado';
+                var totalTime = generalTimeEl.textContent || '00:00:00';
+                
+                // Cabeçalho principal com logo BNI
+                doc.setFontSize(20);
+                doc.setTextColor(196, 30, 58);
+                doc.text('BNI TimeKeeper', 105, 25, { align: 'center' });
+                
+                doc.setFontSize(16);
+                doc.setTextColor(0, 0, 0);
+                doc.text('Relatório da Reunião', 105, 35, { align: 'center' });
+                
+                // Linha decorativa
+                doc.setDrawColor(196, 30, 58);
+                doc.setLineWidth(1);
+                doc.line(20, 40, 190, 40);
+                
+                // Informações da reunião em formato mais limpo
+                doc.setFontSize(11);
+                doc.setTextColor(0, 0, 0);
+                
+                // Coluna esquerda
+                doc.setFont(undefined, 'bold');
+                doc.text('Equipe BNI:', 20, 55);
+                doc.setFont(undefined, 'normal');
+                doc.text(teamName, 20, 62);
+                
+                doc.setFont(undefined, 'bold');
+                doc.text('Data da Reunião:', 20, 75);
+                doc.setFont(undefined, 'normal');
+                var formattedDate = meetingDate ? new Date(meetingDate + 'T00:00:00').toLocaleDateString('pt-BR') : 'Não informado';
+                doc.text(formattedDate, 20, 82);
+                
+                // Coluna direita
+                doc.setFont(undefined, 'bold');
+                doc.text('TimeKeeper:', 110, 55);
+                doc.setFont(undefined, 'normal');
+                doc.text(timekeeper, 110, 62);
+                
+                doc.setFont(undefined, 'bold');
+                doc.text('Reunião Nº:', 110, 75);
+                doc.setFont(undefined, 'normal');
+                doc.text(meetingNumber.toString(), 110, 82);
+                
+                // Tempo total em destaque
+                doc.setFontSize(14);
+                doc.setFont(undefined, 'bold');
+                doc.setTextColor(196, 30, 58);
+                doc.text('Tempo Total da Reunião: ' + totalTime, 105, 95, { align: 'center' });
+                
+                // Preparar dados da tabela
+                var tableData = [];
+                for (var i = 0; i < items.length; i++) {
+                    var it = items[i];
+                    var planned = (parseFloat(it.minutes) || 0);
+                    var realizedSec = it.end && it.start ? Math.max(0, Math.round((it.end - it.start) / 1000)) : Math.round(it.elapsed || 0);
+                    
+                    // Encurtar nomes muito longos para melhor visualização
+                    var itemName = it.name;
+                    if (itemName.length > 50) {
+                        itemName = itemName.substring(0, 47) + '...';
+                    }
+                    
+                    tableData.push([
+                        (i + 1).toString(),
+                        itemName,
+                        planned ? planned + 'm' : '-',
+                        it.start ? it.start.toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'}) : '-',
+                        it.end ? it.end.toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'}) : '-',
+                        realizedSec ? fmt(realizedSec) : '-'
+                    ]);
+                }
+                
+                // Tabela com formatação melhorada
+                doc.autoTable({
+                    head: [['#', 'Etapa da Reunião', 'Planejado', 'Início', 'Fim', 'Realizado']],
+                    body: tableData,
+                    startY: 105,
+                    margin: { left: 10, right: 10 },
+                    tableWidth: 'auto',
+                    styles: {
+                        fontSize: 9,
+                        cellPadding: 3,
+                        lineColor: [220, 220, 220],
+                        lineWidth: 0.1,
+                        textColor: [0, 0, 0]
+                    },
+                    headStyles: {
+                        fillColor: [196, 30, 58],
+                        textColor: [255, 255, 255],
+                        fontSize: 10,
+                        fontStyle: 'bold',
+                        halign: 'center',
+                        valign: 'middle'
+                    },
+                    columnStyles: {
+                        0: { halign: 'center', cellWidth: 12 },    // #
+                        1: { cellWidth: 'auto', fontSize: 8 },     // Etapa (auto width)
+                        2: { halign: 'center', cellWidth: 20 },    // Planejado
+                        3: { halign: 'center', cellWidth: 18 },    // Início
+                        4: { halign: 'center', cellWidth: 18 },    // Fim
+                        5: { halign: 'center', cellWidth: 20 }     // Realizado
+                    },
+                    alternateRowStyles: {
+                        fillColor: [248, 248, 248]
+                    },
+                    bodyStyles: {
+                        valign: 'middle'
+                    }
+                });
+                
+                // Rodapé com informações adicionais
+                var finalY = doc.lastAutoTable.finalY || 200;
+                
+                // Linha decorativa no rodapé
+                doc.setDrawColor(196, 30, 58);
+                doc.setLineWidth(0.5);
+                doc.line(20, finalY + 15, 190, finalY + 15);
+                
+                // Informações do rodapé
+                doc.setFontSize(8);
+                doc.setTextColor(100, 100, 100);
+                doc.text('Gerado pelo BNI TimeKeeper em ' + new Date().toLocaleDateString('pt-BR') + ' às ' + new Date().toLocaleTimeString('pt-BR'), 20, finalY + 25);
+                
+                // Número da página
+                var pageCount = doc.internal.getNumberOfPages();
+                for (var i = 1; i <= pageCount; i++) {
+                    doc.setPage(i);
+                    doc.setFontSize(8);
+                    doc.setTextColor(100, 100, 100);
+                    doc.text('Página ' + i + ' de ' + pageCount, 190, finalY + 25, { align: 'right' });
+                }
+                
+                // Salvar PDF
+                doc.save('relatorio_timekeeper_' + new Date().toISOString().slice(0, 10) + '.pdf');
+                
+            } catch (error) {
+                alert('Erro ao gerar PDF: ' + error.message);
+            }
+        }
+
+        function exportXlsx() {
+            try {
+                // Informações da reunião
+                var teamName = document.getElementById('teamName').value || 'Não informado';
+                var meetingDate = document.getElementById('meetingDate').value || 'Não informado';
+                var meetingNumber = document.getElementById('meetingNumber').value || 'Não informado';
+                var timekeeper = document.getElementById('timekeeper').value || 'Não informado';
+                var totalTime = generalTimeEl.textContent || '00:00:00';
+                
+                // Criar dados para o Excel
+                var wsData = [
+                    ['BNI TimeKeeper - Relatório da Reunião'],
+                    [''],
+                    ['Equipe BNI:', teamName],
+                    ['Data da Reunião:', meetingDate],
+                    ['Número da Reunião:', meetingNumber],
+                    ['TimeKeeper:', timekeeper],
+                    ['Tempo Total da Reunião:', totalTime],
+                    [''],
+                    ['#', 'Etapa', 'Planejado (min)', 'Início', 'Fim', 'Realizado']
+                ];
+                
+                // Adicionar dados dos itens
+                for (var i = 0; i < items.length; i++) {
+                    var it = items[i];
+                    var planned = (parseFloat(it.minutes) || 0);
+                    var realizedSec = it.end && it.start ? Math.max(0, Math.round((it.end - it.start) / 1000)) : Math.round(it.elapsed || 0);
+                    
+                    wsData.push([
+                        i + 1,
+                        it.name,
+                        planned,
+                        it.start ? it.start.toLocaleTimeString() : '',
+                        it.end ? it.end.toLocaleTimeString() : '',
+                        fmt(realizedSec)
+                    ]);
+                }
+                
+                // Criar workbook e worksheet
+                var wb = XLSX.utils.book_new();
+                var ws = XLSX.utils.aoa_to_sheet(wsData);
+                
+                // Definir larguras das colunas
+                ws['!cols'] = [
+                    { wch: 5 },   // #
+                    { wch: 50 },  // Etapa
+                    { wch: 15 },  // Planejado
+                    { wch: 12 },  // Início
+                    { wch: 12 },  // Fim
+                    { wch: 12 }   // Realizado
+                ];
+                
+                // Adicionar worksheet ao workbook
+                XLSX.utils.book_append_sheet(wb, ws, 'Relatório TimeKeeper');
+                
+                // Salvar arquivo
+                XLSX.writeFile(wb, 'relatorio_timekeeper_' + new Date().toISOString().slice(0, 10) + '.xlsx');
+                
+            } catch (error) {
+                alert('Erro ao gerar XLSX: ' + error.message);
+            }
+        }
+
+        function showPlate(color) {
+            overlay.className = 'overlay show ' + color;
+        }
+
+        function hidePlate() {
+            overlay.className = 'overlay';
+        }
+
+        function saveAgenda() {
+            localStorage.setItem('bni_agenda', JSON.stringify(items));
+            alert("Pauta salva no navegador.");
+        }
+
+        function loadAgenda() {
+            var s = localStorage.getItem('bni_agenda');
+            if (!s) {
+                alert("Nenhuma pauta salva.");
+                return;
+            }
+            items = JSON.parse(s);
+            currentIndex = 0;
+            running = false;
+            lastTick = null;
+            renderAgenda();
+            renderLog();
+            alert("Pauta carregada.");
+        }
+
+        function toggleBeep() {
+            useBeep = !useBeep;
+            beepState.textContent = useBeep ? 'Ligada' : 'Desligada';
+        }
+
+        function finalizarReuniao() {
+            if (confirm('Tem certeza que deseja finalizar a reunião? Isso irá parar todos os timers.')) {
+                // Para o timer atual
+                running = false;
+                document.getElementById('startPause').textContent = 'Iniciar';
+                
+                // Finaliza o item atual se estiver rodando
+                var currentItem = items[currentIndex];
+                if (currentItem && !currentItem.end) {
+                    currentItem.end = new Date();
+                }
+                
+                // Para o timer geral da reunião
+                var totalTime = '';
+                if (meetingStartTime) {
+                    totalTime = fmtHMS(Math.floor((Date.now() - meetingStartTime) / 1000));
+                    meetingStartTime = null; // Para o timer geral
+                }
+                
+                // Atualiza o relatório
+                renderLog();
+                
+                if (totalTime) {
+                    alert('Reunião finalizada!\nTempo total: ' + totalTime);
+                }
+                
+                phaseEl.textContent = 'Reunião finalizada';
+            }
+        }
+
+        document.addEventListener('keydown', function(e) {
+            // Don't trigger shortcuts when typing in input fields
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+                return;
+            }
+            
+            var k = e.key.toLowerCase();
+            if (k === ' ') {
+                e.preventDefault();
+                startPause();
+            }
+            if (k === 'n') { next(); }
+            if (k === 'r') { resetCurrent(); }
+            if (k === 'f') {
+                if (document.documentElement.requestFullscreen) {
+                    document.documentElement.requestFullscreen();
+                }
+            }
+            if (k === 'g') { showPlate('green'); }
+            if (k === 'y') { showPlate('yellow'); }
+            if (k === 'escape') { hidePlate(); }
+        });
+
+        renderAgenda();
+        renderLog();
+        tick();
+    </script>
+</body>
+</html>
