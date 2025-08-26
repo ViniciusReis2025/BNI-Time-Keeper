@@ -20,6 +20,10 @@
 <body>
   <h1>Teste de Credenciais</h1>
 
+  <h2>Debug do config.js</h2>
+  <div id="statusConfig" class="warn">Aguardando…</div>
+  <pre id="configDump"></pre>
+
   <h2>1) Google OAuth (Client ID)</h2>
   <div id="statusAuth" class="warn">Aguardando carregamento…</div>
   <div id="buttonDiv" style="margin:12px 0;"></div>
@@ -31,15 +35,29 @@
   <pre id="apiResult"></pre>
 
   <script>
-    // Utilitário
     const el = (id) => document.getElementById(id);
+
+    // === DEBUG DO CONFIG ===
+    function debugConfig() {
+      if (window.GOOGLE_CONFIG) {
+        el("statusConfig").className = "ok";
+        el("statusConfig").textContent = "✅ GOOGLE_CONFIG carregado com sucesso!";
+        el("configDump").textContent = JSON.stringify(GOOGLE_CONFIG, null, 2);
+        console.log("DEBUG GOOGLE_CONFIG:", GOOGLE_CONFIG);
+      } else {
+        el("statusConfig").className = "err";
+        el("statusConfig").textContent = "❌ GOOGLE_CONFIG não encontrado!";
+        el("configDump").textContent = "";
+        console.error("GOOGLE_CONFIG está undefined. Verifique config.js");
+      }
+    }
 
     // 1) Teste do Client ID (GIS)
     function initAuth() {
       try {
-        if (!window.CONFIG || !CONFIG.GOOGLE_CLIENT_ID) {
+        if (!window.GOOGLE_CONFIG || !GOOGLE_CONFIG.CLIENT_ID) {
           el("statusAuth").className = "err";
-          el("statusAuth").textContent = "❌ GOOGLE_CLIENT_ID não encontrado em config.js";
+          el("statusAuth").textContent = "❌ CLIENT_ID não encontrado em config.js";
           return;
         }
         if (!window.google || !google.accounts || !google.accounts.id) {
@@ -48,7 +66,7 @@
           return;
         }
         google.accounts.id.initialize({
-          client_id: CONFIG.GOOGLE_CLIENT_ID,
+          client_id: GOOGLE_CONFIG.CLIENT_ID,
           callback: (response) => {
             el("loginResult").textContent =
               "✅ Login OK! Token (parcial): " + response.credential.slice(0, 40) + "...";
@@ -68,14 +86,14 @@
     // 2) Teste da API Key (YouTube)
     async function testApiKey() {
       try {
-        if (!window.CONFIG || !CONFIG.API_KEY) {
+        if (!window.GOOGLE_CONFIG || !GOOGLE_CONFIG.API_KEY) {
           el("statusApi").className = "err";
           el("statusApi").textContent = "❌ API_KEY não encontrada em config.js";
           return;
         }
         el("statusApi").className = "warn";
         el("statusApi").textContent = "⏳ Chamando YouTube Data API…";
-        const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=teste&maxResults=2&key=${CONFIG.API_KEY}`;
+        const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=teste&maxResults=2&key=${GOOGLE_CONFIG.API_KEY}`;
         const res = await fetch(url);
         const data = await res.json();
         el("apiResult").textContent = JSON.stringify(data, null, 2);
@@ -96,8 +114,7 @@
 
     // Eventos
     window.addEventListener("load", () => {
-      // GIS pode demorar 1–2s mesmo com async/defer; tenta inicializar,
-      // e re-tenta rapidamente se ainda não carregou.
+      debugConfig(); // mostra se carregou o config.js
       const kickoff = () => {
         if (window.google && google.accounts && google.accounts.id) initAuth();
         else setTimeout(initAuth, 800);
