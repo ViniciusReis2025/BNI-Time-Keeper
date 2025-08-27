@@ -1893,4 +1893,15 @@
         tick();
 
         // Inicializar APIs do Google quando a página carregar
-        window.addEventListener('load',
+        window.addEventListener('load', function() {
+            if (typeof gapi !== 'undefined') {
+                gapiLoaded();
+            }
+            if (typeof google !== 'undefined') {
+                gisLoaded();
+            }
+        });
+    </script>
+    
+</body>
+</html>
