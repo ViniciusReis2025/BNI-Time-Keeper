@@ -864,7 +864,7 @@
                                 <th>Planejado</th>
                                 <th>Início</th>
                                 <th>Fim</th>
-                                <th>Realizado</th>
+                                <th>Realizado(mm:ss)</th>
                             </tr>
                         </thead>
                         <tbody></tbody>
@@ -1399,7 +1399,7 @@
                 }
                 
                 doc.autoTable({
-                    head: [['#', 'Etapa', 'Planejado', 'Início', 'Fim', 'Realizado']],
+                    head: [['#', 'Etapa', 'Planejado', 'Início', 'Fim', 'Realizado(mm:ss)']],
                     body: tableData,
                     startY: 110,
                     styles: { fontSize: 9 },
@@ -1428,7 +1428,7 @@
                     ['TimeKeeper:', timekeeper],
                     ['Tempo Total da Reunião:', totalTime],
                     [''],
-                    ['#', 'Etapa', 'Planejado (min)', 'Início', 'Fim', 'Realizado']
+                    ['#', 'Etapa', 'Planejado (min)', 'Início', 'Fim', 'Realizado(mm:ss)']
                 ];
                 
                 for (var i = 0; i < items.length; i++) {
@@ -1455,7 +1455,7 @@
                     { wch: 15 },  // Planejado
                     { wch: 12 },  // Início
                     { wch: 12 },  // Fim
-                    { wch: 12 }   // Realizado
+                    { wch: 12 }   // Realizado(mm:ss)
                 ];
                 
                 XLSX.utils.book_append_sheet(wb, ws, 'Relatório TimeKeeper');
@@ -1485,7 +1485,7 @@
                     ["TimeKeeper:", timekeeper],
                     ["Tempo Total da Reunião:", totalTime],
                     [""],
-                    ["#", "Etapa", "Planejado(min)", "Inicio", "Fim", "Realizado(seg)"]
+                    ["#", "Etapa", "Planejado(min)", "Inicio", "Fim", "Realizado(mm:ss)"]
                 ];
                 
                 for (var i = 0; i < items.length; i++) {
