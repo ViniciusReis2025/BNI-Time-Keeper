@@ -300,9 +300,9 @@
             content: '';
             position: absolute;
             top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
             background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
             animation: shimmer 2s infinite;
         }
@@ -899,27 +899,27 @@
         var WEBHOOK_URL = 'https://n8n.fortress.tec.br/webhook/Arquivo_TimeKeeper'; // Reativando o webhook
 
         var DEFAULT_ITEMS = [
-            "Boas-vindas, avisos legais, check-in nas redes e apresentação de diretoria/liderança",
-            "Propósito e visão geral, números, benefícios e valores do BNI",
-            "Momento de Educação",
-            "Networkers Notáveis",
-            "Apresentação de Novos Membros/Renovantes + Código de Ética",
-            "Apresentações Semanais dos Membros (com Cliente-Sonho)",
-            "Reforço Cliente-Sonho e Pedidos de Referência",
-            "Votação Melhor Apresentação da Semana",
-            "Apresentação dos Convidados",
-            "Relatório do Vice-Presidente",
-            "Relatório Comitê de Afiliação",
-            "Secretário/Tesoureiro: Renovantes 30/60/90 e valores de equipe BNI",
-            "Secretário/Tesoureiro: Palestrantes próximas 6 semanas",
-            "Apresentação Principal 1",
-            "Apresentação Principal 2",
-            "Momento de Contribuições dos Membros",
-            "Verificação da Qualidade das Referências",
-            "Anúncios, Lembretes e Relatórios Especiais",
-            "Orientação, Agradecimento e encaminhamento de Convidados",
-            "Sorteio do Prêmio do Palestrante",
-            "Mensagem final e fechamento"
+            { name: "Boas-vindas, avisos legais, check-in nas redes e apresentação de diretoria/liderança", minutes: 1 },
+            { name: "Propósito e visão geral, números, benefícios e valores do BNI", minutes: 2 },
+            { name: "Momento de Educação", minutes: 4 },
+            { name: "Networkers Notáveis", minutes: 1 },
+            { name: "Apresentação de Novos Membros/Renovantes + Código de Ética", minutes: 1 },
+            { name: "Apresentações Semanais dos Membros (com Cliente-Sonho)", minutes: 45 },
+            { name: "Reforço Cliente-Sonho e Pedidos de Referência", minutes: 2 },
+            { name: "Votação Melhor Apresentação da Semana", minutes: 1 },
+            { name: "Apresentação dos Convidados", minutes: 5 },
+            { name: "Relatório do Vice-Presidente", minutes: 2 },
+            { name: "Relatório Comitê de Afiliação", minutes: 1 },
+            { name: "Secretário/Tesoureiro: Renovantes 30/60/90 e valores de equipe BNI", minutes: 1 },
+            { name: "Secretário/Tesoureiro: Palestrantes próximas 6 semanas", minutes: 1 },
+            { name: "Apresentação Principal 1", minutes: 12 },
+            { name: "Apresentação Principal 2", minutes: 0 },
+            { name: "Momento de Contribuições dos Membros", minutes: 5 },
+            { name: "Verificação da Qualidade das Referências", minutes: 1 },
+            { name: "Anúncios, Lembretes e Relatórios Especiais", minutes: 2 },
+            { name: "Orientação, Agradecimento e encaminhamento de Convidados", minutes: 1 },
+            { name: "Sorteio do Prêmio do Palestrante", minutes: 1 },
+            { name: "Mensagem final e fechamento", minutes: 1 }
         ];
 
         var items = [];
@@ -931,8 +931,8 @@
         // Inicializar itens
         for (var i = 0; i < DEFAULT_ITEMS.length; i++) {
             items.push({
-                name: DEFAULT_ITEMS[i],
-                minutes: '',
+                name: DEFAULT_ITEMS[i].name,
+                minutes: DEFAULT_ITEMS[i].minutes,
                 start: null,
                 end: null,
                 elapsed: 0
